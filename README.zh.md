@@ -14,7 +14,29 @@
 皮带编码器 → M850 触发 → 相机 + M851 锁存 → YOLO OBB → 目标队列 → 动态位姿 → M701 跟随/切块
 ```
 
-## 2. 功能
+## 2. 示意图
+
+![Delta 马铃薯切块实验台全景](docs/fig1.jpeg)
+
+Delta 马铃薯切块实验台全景，含主机界面与电源。
+
+![切块平台特写](docs/fig2.jpeg)
+
+切块平台特写：输送带、顶部相机与切后马铃薯样品。
+
+![系统架构图](docs/fig3.jpeg)
+
+系统架构：PC、STM32F407、相机、皮带编码器、驱动与 Delta 机器人。
+
+![相机标定过程](docs/fig4.jpeg)
+
+输送带上的棋盘格相机标定及角点检测叠加结果。
+
+![切块状态机与实物过程](docs/fig5.jpeg)
+
+切块状态机（`IDLE → SYNC → CUTDOWN → HOLD → RECOVER`）及对应实物过程。
+
+## 3. 功能
 
 - **距离触发取帧** — 固件 `M850` 按皮带里程触发相机；可用 `M852` 手动触发。
 - **硬件锁存对齐** — `M851` 返回触发时刻编码器快照 `E0`。
@@ -25,7 +47,7 @@
 - **切块状态机** — `IDLE → SYNC → CUT_DOWN → HOLD → RECOVER`。
 - **输送带控制** — `M815` / `M802`。
 
-## 3. 目录结构
+## 4. 目录结构
 
 | 路径 | 说明 |
 |------|------|
@@ -33,9 +55,9 @@
 | [`code/firmware/`](code/firmware/) | STM32F407 烧录文件 + 固件说明 |
 | [`code/yolo_weights/`](code/yolo_weights/) | YOLO OBB 权重（`best.pt`） |
 
-## 4. 使用方法
+## 5. 使用方法
 
-### 4.1 烧录固件
+### 5.1 烧录固件
 
 见 [`code/firmware/README.md`](code/firmware/README.md)。在 `code/firmware/` 下：
 
@@ -45,7 +67,7 @@ openocd -f stlink.cfg -c "program core_stm32f407.elf verify reset exit"
 
 烧录后主机口为 USB CDC（例如 `/dev/ttyACM0`）。
 
-### 4.2 加载 YOLO 权重
+### 5.2 加载 YOLO 权重
 
 ```python
 from pathlib import Path
@@ -54,11 +76,11 @@ from ultralytics import YOLO
 model = YOLO(str(Path("code/yolo_weights/best.pt")))
 ```
 
-### 4.3 使用核心算法
+### 5.3 使用核心算法
 
 [`code/core_dynamic_cut/`](code/core_dynamic_cut/) 提供编码器速度滤波、动态位姿/工作窗口、目标关联与切块状态机。在主机应用中从该目录导入即可。说明见 [`code/core_dynamic_cut/README.md`](code/core_dynamic_cut/README.md)。
 
-## 5. 运行模式（主机侧设计）
+## 6. 运行模式（主机侧设计）
 
 | 模式 | 行为 |
 |------|------|
@@ -66,7 +88,7 @@ model = YOLO(str(Path("code/yolo_weights/best.pt")))
 | `follow` | 在工作窗口内发送 M701 动态跟随 |
 | `cut` | 短跟随切块状态机 |
 
-## 6. 关键参数
+## 7. 关键参数
 
 常见主机/算法参数（见 `code/core_dynamic_cut/` 中的 `CutConfig` / `QueueConfig`，以及固件 `M850` / `M700`）：
 
@@ -80,7 +102,7 @@ model = YOLO(str(Path("code/yolo_weights/best.pt")))
 | `conveyor_speed_mm_s` | 皮带速度（`M815`） |
 | 关联/记忆门限 | 跨帧匹配与目标生命周期 |
 
-## 7. 相关文档
+## 8. 相关文档
 
 - 核心算法：[`code/core_dynamic_cut/README.md`](code/core_dynamic_cut/README.md)
 - 固件：[`code/firmware/README.md`](code/firmware/README.md)

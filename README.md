@@ -14,7 +14,29 @@ Coordinate chain: `pixel → plane → encoder delta → robot`.
 Belt encoder → M850 trigger → Camera + M851 latch → YOLO OBB → Target queue → Dynamic pose → M701 follow / cut
 ```
 
-## 2. Features
+## 2. Figures
+
+![Laboratory overview of the Delta potato-cutting cell](docs/fig1.jpeg)
+
+Laboratory overview of the Delta potato-cutting cell with the host PC and power supply.
+
+![Close-up of the cutting platform](docs/fig2.jpeg)
+
+Close-up of the cutting platform showing the conveyor, overhead camera, and cut potato samples.
+
+![System architecture diagram](docs/fig3.jpeg)
+
+System architecture linking the PC, STM32F407, camera, belt encoder, motor driver, and Delta robot.
+
+![Camera calibration on the conveyor](docs/fig4.jpeg)
+
+Camera calibration on the conveyor belt with checkerboard corner detection overlays.
+
+![Cut state machine and hardware sequence](docs/fig5.jpeg)
+
+Cut state machine (`IDLE → SYNC → CUTDOWN → HOLD → RECOVER`) with matching hardware photos.
+
+## 3. Features
 
 - **Distance-triggered capture** — firmware `M850` pulses the camera every N mm; `M852` for manual triggers.
 - **Hardware latch alignment** — `M851` returns encoder snapshot `E0` at trigger time.
@@ -25,7 +47,7 @@ Belt encoder → M850 trigger → Camera + M851 latch → YOLO OBB → Target qu
 - **Cut state machine** — `IDLE → SYNC → CUT_DOWN → HOLD → RECOVER`.
 - **Conveyor control** — `M815` / `M802`.
 
-## 3. Repository layout
+## 4. Repository layout
 
 | Path | Description |
 |------|-------------|
@@ -33,9 +55,9 @@ Belt encoder → M850 trigger → Camera + M851 latch → YOLO OBB → Target qu
 | [`code/firmware/`](code/firmware/) | STM32F407 flash binaries + firmware README |
 | [`code/yolo_weights/`](code/yolo_weights/) | YOLO OBB weights (`best.pt`) |
 
-## 4. How to use
+## 5. How to use
 
-### 4.1 Flash firmware
+### 5.1 Flash firmware
 
 See [`code/firmware/README.md`](code/firmware/README.md). From `code/firmware/`:
 
@@ -45,7 +67,7 @@ openocd -f stlink.cfg -c "program core_stm32f407.elf verify reset exit"
 
 Host port after flash: USB CDC (e.g. `/dev/ttyACM0`).
 
-### 4.2 Load YOLO weights
+### 5.2 Load YOLO weights
 
 ```python
 from pathlib import Path
@@ -54,11 +76,11 @@ from ultralytics import YOLO
 model = YOLO(str(Path("code/yolo_weights/best.pt")))
 ```
 
-### 4.3 Use core algorithms
+### 5.3 Use core algorithms
 
 Modules under [`code/core_dynamic_cut/`](code/core_dynamic_cut/) implement encoder velocity filtering, dynamic pose / workspace windows, target association, and the cut state machine. Import them from that package in your host application. Details: [`code/core_dynamic_cut/README.md`](code/core_dynamic_cut/README.md).
 
-## 5. Run modes (host design)
+## 6. Run modes (host design)
 
 | Mode | Behavior |
 |------|----------|
@@ -66,7 +88,7 @@ Modules under [`code/core_dynamic_cut/`](code/core_dynamic_cut/) implement encod
 | `follow` | Send M701 dynamic follow targets in the workspace window |
 | `cut` | Short-follow cut state machine |
 
-## 6. Key parameters
+## 7. Key parameters
 
 Typical host / algorithm knobs (see `CutConfig` / `QueueConfig` in `code/core_dynamic_cut/` and firmware `M850` / `M700`):
 
@@ -80,7 +102,7 @@ Typical host / algorithm knobs (see `CutConfig` / `QueueConfig` in `code/core_dy
 | `conveyor_speed_mm_s` | Belt speed (`M815`) |
 | association / memory gates | Cross-frame matching and target lifetime |
 
-## 7. Related docs
+## 8. Related docs
 
 - Core algorithms: [`code/core_dynamic_cut/README.md`](code/core_dynamic_cut/README.md)
 - Firmware: [`code/firmware/README.md`](code/firmware/README.md)
