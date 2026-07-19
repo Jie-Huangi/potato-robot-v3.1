@@ -92,3 +92,7 @@ Full Python runtime (original project):
 Algorithm excerpts (this repo):
 
 `../core_dynamic_cut/`
+
+YOLO weights (this repo):
+
+`../yolo_weights/best.pt`
