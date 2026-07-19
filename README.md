@@ -2,98 +2,73 @@
 
 [中文版](README.zh.md) | English Version
 
-Documentation and companion assets for the **distance-trigger + encoder-latch + dynamic follow/cut** pipeline implemented by:
-
-```text
-/home/jiehuang/potato-robot-v3/code/perception-planning-action/stm32_potato_dynamic_cut_v2.py
-```
+This repository packages the **distance-trigger + encoder-latch + dynamic follow/cut** stack for a Delta potato-cutting cell: core Python algorithms, STM32 flash binaries, and YOLO OBB weights.
 
 ## 1. Overview
 
-This program synchronizes vision with belt motion using a **hardware encoder latch at camera trigger time**, tracks potatoes into the Delta workspace, and (in cut mode) runs a short-follow cut state machine.
+Vision is synchronized to belt motion with a **hardware encoder latch at camera trigger time**. Targets are tracked into the Delta workspace; cut mode runs a short-follow state machine.
 
 Coordinate chain: `pixel → plane → encoder delta → robot`.
 
 ```text
-Belt encoder → M850 trigger → Hik camera + M851 latch → YOLO OBB → Target queue → Dynamic pose → M701 follow / cut
+Belt encoder → M850 trigger → Camera + M851 latch → YOLO OBB → Target queue → Dynamic pose → M701 follow / cut
 ```
 
 ## 2. Features
 
 - **Distance-triggered capture** — firmware `M850` pulses the camera every N mm; `M852` for manual triggers.
-- **Hardware latch alignment** — each frame pops `M851` encoder snapshot `E0` at trigger time.
-- **YOLO OBB detection** — background inference so the control loop keeps encoder / M701 timing.
-- **Target queue & association** — same-frame merge, cross-frame matching, anchor correction, mileage prune.
+- **Hardware latch alignment** — `M851` returns encoder snapshot `E0` at trigger time.
+- **YOLO OBB detection** — weights in `code/yolo_weights/best.pt`.
+- **Target queue & association** — same-frame merge, cross-frame matching, anchor correction, mileage prune (`code/core_dynamic_cut/`).
 - **Encoder Kalman filter** — control velocity from position E (firmware V is log-only).
-- **Run modes** — `monitor` / `follow` / `cut`.
+- **Run modes (host design)** — `monitor` / `follow` / `cut`.
 - **Cut state machine** — `IDLE → SYNC → CUT_DOWN → HOLD → RECOVER`.
-- **Conveyor control** — `M815` / `M802`, confirm-on-start + keyboard toggle.
-- **Debug logs** — CSV + annotated frames under the output directory.
+- **Conveyor control** — `M815` / `M802`.
 
 ## 3. Repository layout
 
 | Path | Description |
 |------|-------------|
-| [`code/core_dynamic_cut/`](code/core_dynamic_cut/) | Core algorithm excerpts (Chinese comments) |
-| [`code/firmware/`](code/firmware/) | STM32F407 flash binaries + English firmware README |
+| [`code/core_dynamic_cut/`](code/core_dynamic_cut/) | Core algorithm modules (Chinese comments) |
+| [`code/firmware/`](code/firmware/) | STM32F407 flash binaries + firmware README |
 | [`code/yolo_weights/`](code/yolo_weights/) | YOLO OBB weights (`best.pt`) |
 
-## 4. Dependencies
+## 4. How to use
 
-- Python 3, OpenCV, NumPy, Ultralytics YOLO
-- Hikvision SDK via `MvCamera.py`
-- STM32 USB CDC serial (default `/dev/ttyACM0`, read/write permission required)
-- Calibration file `calibration_current.json` (homography, plane→robot, encoder/trigger signs)
-- YOLO OBB weights (this repo: [`code/yolo_weights/best.pt`](code/yolo_weights/best.pt))
+### 4.1 Flash firmware
 
-## 5. How to use
-
-### 5.1 Run the full script
+See [`code/firmware/README.md`](code/firmware/README.md). From `code/firmware/`:
 
 ```bash
-cd /home/jiehuang/potato-robot-v3/code/perception-planning-action
-python3 stm32_potato_dynamic_cut_v2.py
+openocd -f stlink.cfg -c "program core_stm32f407.elf verify reset exit"
 ```
 
-There is **no CLI**. Edit parameters in `main()` before launch: `run_mode`, `dry_run_motion`, `model_path`, `conveyor_speed_mm_s`, `work_z_mm` / `cut_z_mm`, etc.
+Host port after flash: USB CDC (e.g. `/dev/ttyACM0`).
 
-Point `model_path` at this repo’s weights if you prefer:
+### 4.2 Load YOLO weights
 
 ```python
-model_path=Path("/home/jiehuang/potato-robot-v3.1/code/yolo_weights/best.pt")
+from pathlib import Path
+from ultralytics import YOLO
+
+model = YOLO(str(Path("code/yolo_weights/best.pt")))
 ```
 
-At startup the script loads calibration (if present), applies field direction overrides, and prints a preflight summary.
+### 4.3 Use core algorithms
 
-### 5.2 Interactive safety prompts
+Modules under [`code/core_dynamic_cut/`](code/core_dynamic_cut/) implement encoder velocity filtering, dynamic pose / workspace windows, target association, and the cut state machine. Import them from that package in your host application. Details: [`code/core_dynamic_cut/README.md`](code/core_dynamic_cut/README.md).
 
-| Type | Effect |
-|------|--------|
-| `HOME` | Confirm then send `G28 S1` homing |
-| `WORKZ` | Move to work plane after IK preview |
-| `TOOLZERO` / `SKIPTOOL` | Zero end-effector or skip |
-| `BELT` | Start conveyor (motion modes when enabled) |
-
-### 5.3 Keyboard while running
-
-| Key | Action |
-|-----|--------|
-| `q` / Esc | Quit |
-| `s` | Save last camera frame |
-| `c` | Toggle conveyor |
-| `t` | Manual camera trigger (`M852`) |
-
-## 6. Run modes
+## 5. Run modes (host design)
 
 | Mode | Behavior |
 |------|----------|
-| `monitor` | Vision + latch + coordinate chain only; no M701 motion; conveyor auto-start disabled |
+| `monitor` | Vision + latch + coordinate chain only; no M701 motion |
 | `follow` | Send M701 dynamic follow targets in the workspace window |
-| `cut` | Full short-follow cut state machine (default in `main()`) |
+| `cut` | Short-follow cut state machine |
 
-`dry_run_motion=True` skips arm connection and only validates camera / mapping path.
+## 6. Key parameters
 
-## 7. Key parameters (in `main()`)
+Typical host / algorithm knobs (see `CutConfig` / `QueueConfig` in `code/core_dynamic_cut/` and firmware `M850` / `M700`):
 
 | Parameter | Role |
 |-----------|------|
@@ -101,30 +76,13 @@ At startup the script loads calibration (if present), applies field direction ov
 | `workspace_limit_x/y_mm` | Safe follow window half-size |
 | `cut_station_x_mm` | Nominal cut station X in robot frame |
 | `cut_sync_start_distance_mm` / lead | When to lock sync and when to start Z down |
-| `follow_feed_mm_s` / `follow_feed_z_mm_s` | XY / Z follow feeds |
-| `conveyor_speed_mm_s` | Belt speed when host-controlled |
-| `debug_log_enabled` / frames | CSV + image debug output |
+| `follow_feed_mm_s` / `follow_feed_z_mm_s` | XY / Z follow feeds (firmware `M700`) |
+| `conveyor_speed_mm_s` | Belt speed (`M815`) |
+| association / memory gates | Cross-frame matching and target lifetime |
 
-## 8. Outputs & troubleshooting
+## 7. Related docs
 
-Debug sessions are written under:
-
-```text
-output/stm32_potato_dynamic_latch_v2/debug_<timestamp>/
-```
-
-Typical CSVs: `events`, `frames`, `detections`, `follow`, `cut`, `timing`.
-
-Common failures:
-
-- Missing calibration → no valid homography / plane→robot
-- Serial permission denied on `/dev/ttyACM0`
-- Encoder not ready (ID6 stale)
-- Latch too old (`max_latch_age_ms`)
-- YOLO weights path missing
-
-## 9. Related docs
-
-- Algorithm excerpts: [`code/core_dynamic_cut/README.md`](code/core_dynamic_cut/README.md)
-- Firmware flash guide: [`code/firmware/README.md`](code/firmware/README.md)
-- Chinese version of this page: [`README.zh.md`](README.zh.md)
+- Core algorithms: [`code/core_dynamic_cut/README.md`](code/core_dynamic_cut/README.md)
+- Firmware: [`code/firmware/README.md`](code/firmware/README.md)
+- Weights: [`code/yolo_weights/README.md`](code/yolo_weights/README.md)
+- Chinese version: [`README.zh.md`](README.zh.md)

@@ -60,7 +60,7 @@ You may also flash `.hex` / `.bin` with STM32CubeProgrammer or similar tools.
    - `M995` — firmware version
    - `M913` — homing status after `G28 S1`
 
-## Key commands used by the Python dynamic-cut app
+## Key G/M-code commands
 
 | Command | Purpose |
 |---------|---------|
@@ -83,16 +83,7 @@ You may also flash `.hex` / `.bin` with STM32CubeProgrammer or similar tools.
 | `M852` | Manual trigger + latch |
 | `M909` | IK preview (reachability check) |
 
-## Related host software
+## Related in this repository
 
-Full Python runtime (original project):
-
-`/home/jiehuang/potato-robot-v3/code/perception-planning-action/stm32_potato_dynamic_cut_v2.py`
-
-Algorithm excerpts (this repo):
-
-`../core_dynamic_cut/`
-
-YOLO weights (this repo):
-
-`../yolo_weights/best.pt`
+- Core algorithms: [`../core_dynamic_cut/`](../core_dynamic_cut/)
+- YOLO weights: [`../yolo_weights/best.pt`](../yolo_weights/best.pt)

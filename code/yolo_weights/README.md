@@ -1,19 +1,16 @@
 # YOLO OBB Weights
 
-Potato OBB detection weights used by `stm32_potato_dynamic_cut_v2.py`.
+Potato OBB detection weights for the dynamic-cut vision pipeline.
 
 | File | Description |
 |------|-------------|
-| `best.pt` | Ultralytics YOLO OBB checkpoint from `exp-final` |
+| `best.pt` | Ultralytics YOLO OBB checkpoint |
 
-Source (original project):
-
-```text
-/home/jiehuang/potato-robot-v3/code/perception-planning-action/ultralytics/runs/obb/runs/obb/exp-final/weights/best.pt
-```
-
-In `main()`, set:
+Load example:
 
 ```python
-model_path=Path("/home/jiehuang/potato-robot-v3.1/code/yolo_weights/best.pt")
+from pathlib import Path
+from ultralytics import YOLO
+
+model = YOLO(str(Path(__file__).resolve().parent / "best.pt"))
 ```

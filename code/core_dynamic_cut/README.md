@@ -1,8 +1,6 @@
-# 动态切块核心算法摘录
+# 动态切块核心算法
 
-本目录从完整脚本 `stm32_potato_dynamic_cut_v2.py` 中抽出**关键算法函数**，并加上中文注释，便于阅读与对照。
-
-> 这些文件**不能**替代完整运行程序（缺少相机、串口、YOLO、标定加载与主循环）。
+本目录提供动态切块流水线中的核心算法模块（含中文注释），可直接阅读或集成到主机程序。
 
 | 文件 | 内容 |
 |------|------|
@@ -11,6 +9,14 @@
 | `target_queue_core.py` | 同帧去重、跨帧关联、锚点修正、里程清理 |
 | `cut_state_machine.py` | 切块状态机：`IDLE→SYNC→CUT_DOWN→HOLD→RECOVER` |
 
-完整可运行脚本路径（原工程）：
+依赖：Python 3；`dynamic_pose.py` 需要 NumPy。
 
-`/home/jiehuang/potato-robot-v3/code/perception-planning-action/stm32_potato_dynamic_cut_v2.py`
+示例：
+
+```python
+from encoder_kalman import EncoderKalmanFilter
+from cut_state_machine import CutStateMachine, CutConfig
+
+kf = EncoderKalmanFilter(accel_noise=50.0, meas_noise_mm=0.5, innovation_gate_mm=30.0)
+sm = CutStateMachine(CutConfig())
+```
